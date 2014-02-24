@@ -199,9 +199,22 @@ public class RadiationHelper {
 	}
 	
 	private static void applyModerationFactors(RadiationData data, RadiationPacket radiation, ReactorInteriorData moderatorData) {
-		float radiationAbsorbed = radiation.intensity * moderatorData.absorption * (1f - radiation.hardness);
-		radiation.intensity = Math.max(0f, radiation.intensity - radiationAbsorbed);
-		radiation.hardness /= moderatorData.moderation;
+		if (radiation.intensity == 0.0f) {
+			// If there isn't actually any radiation, moderation factors will not change that.
+			return;
+		}
+		float radiationFast = radiation.intensity * radiation.hardness;
+		float radiationSlow = radiation.intensity * (1f - radiation.hardness);
+
+		float radiationModerated = radiationFast / moderatorData.moderation;
+		float radiationAbsorbed = radiationSlow * moderatorData.absorption;
+
+		radiationFast += -radiationModerated;
+		radiationSlow += radiationModerated - radiationAbsorbed;
+
+		radiation.intensity = radiationFast + radiationSlow;
+		radiation.hardness = radiationFast / radiation.intensity;
+
 		data.environmentRfChange += moderatorData.heatEfficiency * radiationAbsorbed * rfPerRadiationUnit;
 	}
 	
